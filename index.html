@@ -345,7 +345,6 @@ if ('serviceWorker' in navigator) {
   }
 
   function computeScore(){
-  // Muokattava kopio + topMap nopeaan hakuun
   const g = state.grid.map(row => row.map(st => st.slice()));
   const topMap = new Map();
   for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
@@ -353,8 +352,11 @@ if ('serviceWorker' in navigator) {
     topMap.set(`${r},${c}`, top);
   }
 
-  // 1) TYHJENNYS: N-komponentit (1–4) vain numeron perusteella.
-  //    Koko oltava täsmälleen N; muuten kaikki ruudut komponentista poistuvat.
+  // Käytä aina vain ortogonaalisia suuntia (EI diagonaaleja)
+  const ORTHO = [[1,0],[-1,0],[0,1],[0,-1]];
+  const inB = (r,c) => r>=0 && r<GRID && c>=0 && c<GRID;
+
+  // 1) TYHJENNYS: N-komponentit vain numeron perusteella, ortogonaalinen yhteys
   const toRemove = new Set();
   for (const val of [1,2,3,4]) {
     const seen = new Set();
@@ -363,38 +365,38 @@ if ('serviceWorker' in navigator) {
       if (!t || t.start) continue;
       if (t.value !== val || seen.has(key)) continue;
 
-      // BFS numerolla 'val' – väriä ei huomioida
+      // BFS numerolla 'val' (ORTOGONAALINEN)
       const comp = [];
       const q = [[r,c]];
       seen.add(key);
       while (q.length) {
         const [rr,cc] = q.shift();
         comp.push([rr,cc]);
-        for (const [dr,dc] of DIRS) {
+        for (const [dr,dc] of ORTHO) {
           const nr = rr+dr, nc = cc+dc;
+          if (!inB(nr,nc)) continue;
           const t2 = topMap.get(`${nr},${nc}`);
           const k2 = `${nr},${nc}`;
           if (!t2 || t2.start) continue;
           if (t2.value === val && !seen.has(k2)) { seen.add(k2); q.push([nr,nc]); }
         }
       }
+
       const ok = (val === 1 ? comp.length === 1 : comp.length === val);
       if (!ok) for (const pos of comp) toRemove.add(pos.join(','));
     }
   }
 
-  // −1 per KORTTI jokaisesta poistuvasta ruudusta, tyhjennä ruutu ennen plussia
+  // −1 / kortti ruudun pinossa; tyhjennä ennen plussia
   let penalties = 0;
-  if (toRemove.size) {
-    for (const key of toRemove) {
-      const [r,c] = key.split(',').map(Number);
-      penalties += g[r][c].length; // koko pinon koko
-      g[r][c] = [];
-      topMap.set(key, null);
-    }
+  for (const key of toRemove) {
+    const [r,c] = key.split(',').map(Number);
+    penalties += g[r][c].length;
+    g[r][c] = [];
+    topMap.set(key, null);
   }
 
-  // 2) VÄRIKENTÄT: yhtenäiset värit (≥5) 1 p / kortti (vain jäljelle jääneet)
+  // 2) VÄRIKENTÄT: ortogonaalinen yhteys, ≥5 → 1 p / kortti
   let fieldPoints = 0;
   const seenF = new Set();
   for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
@@ -405,13 +407,15 @@ if ('serviceWorker' in navigator) {
     const comp = []; const q = [[r,c]]; seenF.add(key);
     while (q.length) {
       const [rr,cc] = q.shift(); comp.push([rr,cc]);
-      for (const [dr,dc] of DIRS) {
+      for (const [dr,dc] of ORTHO) {
         const nr = rr+dr, nc = cc+dc;
+        if (!inB(nr,nc)) continue;
         const t2 = topMap.get(`${nr},${nc}`); const k2 = `${nr},${nc}`;
         if (!t2 || t2.start) continue;
         if (t2.color === color && !seenF.has(k2)) { seenF.add(k2); q.push([nr,nc]); }
       }
     }
+
     if (comp.length >= 5) {
       if (state.summer) {
         const [sr,sc] = state.startCell;
@@ -423,14 +427,14 @@ if ('serviceWorker' in navigator) {
     }
   }
 
-  // 3) PERHOSET: topissa + viereisessä ruudussa sama kohdeväri
+  // 3) PERHOSET: topissa + ortogonaalinen naapuri samaa kohdeväriä
   let butter = 0;
   for (let r=0; r<GRID; r++) for (let c=0; c<GRID; c++) {
     const t = topMap.get(`${r},${c}`);
     if (!t || t.start || !t.butterfly) continue;
-    for (const [dr,dc] of DIRS) {
+    for (const [dr,dc] of ORTHO) {
       const nr = r+dr, nc = c+dc;
-      if (!inBounds(nr,nc)) continue;
+      if (!inB(nr,nc)) continue;
       const nb = topMap.get(`${nr},${nc}`);
       if (nb && !nb.start && nb.color === t.butterfly) { butter++; break; }
     }
