@@ -446,10 +446,12 @@ if ('serviceWorker' in navigator) {
 
 
   function rank(total){
-    if(total<=10) return "Aloittelija";
-    if(total<=17) return "Oppipoika";
-    if(total<=25) return "Ekspertti";
-    return "Mestari";
+    if(total<=10) return "Aloittelija (1/6)";
+    if(total<=15) return "Oppipoika (2/6)";
+	if(total<=20) return "Taitaja (3/6)";
+    if(total<=25) return "Ekspertti (4/6)";
+    if(total<=35) return "Mestari (5/6)";	
+    return "Legendaarinen (6/6)";
   }
 
   function autoScore(){
