@@ -478,9 +478,9 @@ if ('serviceWorker' in navigator) {
     const handSlot = document.getElementById('handSlot');
     handSlot.innerHTML = '';
     if(state.hand){ handSlot.appendChild(renderCard(state.hand)); }
-
-    renderGarden();
     autoScore();
+    renderGarden();
+
 
     document.getElementById('undoBtn').disabled = state.history.length===0;
   }
