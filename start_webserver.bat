@@ -8,6 +8,6 @@ ipconfig | findstr /i "IPv4"
 
 REM Käynnistä Pythonin HTTP-palvelin portissa 8000
 echo Starting Python HTTP server at port 8009...
-python -m http.server 8009 --bind 0.0.0.0
+python -m http.server 8009 --bind 0.0.0.0 
 
 pause
